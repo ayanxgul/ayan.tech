@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scientific Calculator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+  body {
+    min-height: 100vh;
+    display: flex; justify-content: center; align-items: center;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+  }
+  .calc {
+    background: #22252a; border-radius: 16px; padding: 20px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5); width: 380px;
+  }
+  .display {
+    background: #14161a; color: #e8f0ff; text-align: right;
+    border-radius: 10px; padding: 15px; margin-bottom: 15px; min-height: 90px;
+  }
+  .history { font-size: 13px; color: #7f8c9b; min-height: 18px; word-wrap: break-word; }
+  .current { font-size: 30px; word-wrap: break-word; }
+  .buttons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  button {
+    border: none; border-radius: 8px; padding: 14px 0; font-size: 16px;
+    cursor: pointer; background: #2f3339; color: #e8f0ff; transition: .15s;
+  }
+  button:hover { background: #3a3f46; }
+  button:active { transform: scale(.95); }
+  .sci { background: #39424e; color: #9fc5ff; font-size: 14px; }
+  .sci:hover { background: #465262; }
+  .op { background: #f39c12; color: #fff; }
+  .op:hover { background: #f5a623; }
+  .eq { background: #27ae60; color: #fff; grid-column: span 2; }
+  .eq:hover { background: #2ecc71; }
+  .clr { background: #e74c3c; color: #fff; }
+  .clr:hover { background: #ff6655; }
+</style>
+<base target="_blank">
+</head>
+<body>
+<div class="calc">
+  <div class="display">
+    <div class="history" id="history"></div>
+    <div class="current" id="current">0</div>
+  </div>
+  <div class="buttons" id="buttons"></div>
+</div>
+<script>
+const current = document.getElementById('current');
+const historyEl = document.getElementById('history');
+let expr = '';
+
+const keys = [
+  ['sin(','cos(','tan(','π','CLR'],
+  ['asin(','acos(','atan(','e','⌫'],
+  ['√(','x²','x³','^','÷'],
+  ['log(','ln(','(',')','×'],
+  ['7','8','9','n!','-'],
+  ['4','5','6','1/x','+'],
+  ['1','2','3','%','='],
+  ['0','.','±','rnd','=']
+];
+
+function factorial(n){ if(n<0 || n%1!==0) throw 'Error'; return n<=1?1:n*factorial(n-1); }
+
+function evaluate(str){
+  let s = str
+    .replace(/×/g,'*').replace(/÷/g,'/').replace(/π/g,'Math.PI')
+    .replace(/e(?![a-z])/g,'Math.E').replace(/\^/g,'**')
+    .replace(/√\(/g,'Math.sqrt(').replace(/log\(/g,'Math.log10(')
+    .replace(/ln\(/g,'Math.log(').replace(/sin\(/g,'Math.sin(')
+    .replace(/cos\(/g,'Math.cos(').replace(/tan\(/g,'Math.tan(')
+    .replace(/asin\(/g,'Math.asin(').replace(/acos\(/g,'Math.acos(')
+    .replace(/atan\(/g,'Math.atan(')
+    .replace(/(\d+\.?\d*)x²/g,'($1)**2').replace(/(\d+\.?\d*)x³/g,'($1)**3');
+  // percent: 50% -> 0.5
+  s = s.replace(/(\d+\.?\d*)%/g,'($1/100)');
+  // factorial
+  s = s.replace(/(\d+\.?\d*)n!/g,'factorial($1)');
+  // 1/x
+  s = s.replace(/(\d+\.?\d*)1\/x/g,'(1/$1)');
+  const val = Function('factorial','"use strict";return('+s+')')(factorial);
+  if(!isFinite(val) || isNaN(val)) throw 'Error';
+  return Math.round(val*1e12)/1e12;
+}
+
+function press(k){
+  if(k==='CLR'){ expr=''; historyEl.textContent=''; current.textContent='0'; return; }
+  if(k==='⌫'){ expr=expr.slice(0,-1); current.textContent=expr||'0'; return; }
+  if(k==='='){
+    try {
+      const res = evaluate(expr);
+      historyEl.textContent = expr + ' =';
+      expr = String(res);
+      current.textContent = expr;
+    } catch(e){ current.textContent='Error'; expr=''; }
+    return;
+  }
+  if(k==='±'){ expr = expr.startsWith('-') ? expr.slice(1) : '-'+expr; current.textContent=expr||'0'; return; }
+  if(k==='rnd'){ expr = String(Math.round(Math.random()*1e6)/1e6); current.textContent=expr; return; }
+  expr += k;
+  current.textContent = expr;
+}
+
+const grid = document.getElementById('buttons');
+keys.flat().forEach(k=>{
+  const b = document.createElement('button');
+  b.textContent = k;
+  if('÷×-+^'.includes(k)) b.className='op';
+  else if(k==='=') b.className='eq';
+  else if(k==='CLR' || k==='⌫') b.className='clr';
+  else if(isNaN(k) && k!=='.') b.className='sci';
+  b.onclick = ()=>press(k);
+  grid.appendChild(b);
+});
+
+document.addEventListener('keydown', e=>{
+  const map = {'*':'×','/':'÷','Enter':'=','Backspace':'⌫','Escape':'CLR'};
+  let k = e.key;
+  if(map[k]) k = map[k];
+  if(/^[0-9.+\-()%]$/.test(k) || ['=','⌫','CLR','×','÷'].includes(k)) press(k);
+});
+</script>
+</body>
+</html>
